@@ -3,8 +3,6 @@ import os
 import sys
 from functools import wraps
 
-import openai
-
 from devchat.memory import ChatMemory
 
 from .openai import (
@@ -33,7 +31,7 @@ chat_completion_stream_out = exception_handle(
         "content": None,
         "function_name": None,
         "parameters": "",
-        "error": err.type if isinstance(err, openai.APIError) else err,
+        "error": err,
     },
 )
 
@@ -47,12 +45,12 @@ def chat(
 ):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs): # pylint: disable=unused-argument
+        def wrapper(*args, **kwargs):
             nonlocal prompt, memory, model, llm_config
-            prompt = prompt.format(**kwargs)
+            prompt_new = prompt.format(**kwargs)
             messages = memory.contexts() if memory else []
-            if not any(item["content"] == prompt for item in messages) and prompt:
-                messages.append({"role": "user", "content": prompt})
+            if not any(item["content"] == prompt_new for item in messages) and prompt_new:
+                messages.append({"role": "user", "content": prompt_new})
             if "__user_request__" in kwargs:
                 messages.append(kwargs["__user_request__"])
                 del kwargs["__user_request__"]
@@ -63,12 +61,12 @@ def chat(
             else:
                 response = chat_completion_stream_out(messages, llm_config=llm_config)
             if not response.get("content", None):
-                print(f"call {func.__name__} failed:", response["error"], file=sys.stderr)
+                print(response["error"], file=sys.stderr)
                 return None
 
             if memory:
                 memory.append(
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": prompt_new},
                     {"role": "assistant", "content": response["content"]},
                 )
             return response["content"]
@@ -86,12 +84,12 @@ def chat_json(
 ):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs): # pylint: disable=unused-argument
+        def wrapper(*args, **kwargs):
             nonlocal prompt, memory, model, llm_config
-            prompt = prompt.format(**kwargs)
+            prompt_new = prompt.format(**kwargs)
             messages = memory.contexts() if memory else []
-            if not any(item["content"] == prompt for item in messages):
-                messages.append({"role": "user", "content": prompt})
+            if not any(item["content"] == prompt_new for item in messages):
+                messages.append({"role": "user", "content": prompt_new})
 
             llm_config["model"] = model
             response = chat_completion_no_stream_return_json(messages, llm_config=llm_config)
@@ -100,7 +98,7 @@ def chat_json(
 
             if memory:
                 memory.append(
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": prompt_new},
                     {"role": "assistant", "content": json.dumps(response)},
                 )
             return response

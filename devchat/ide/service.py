@@ -1,17 +1,9 @@
-# disable pylint
-# pylint: disable=W0613
-# pylint: disable=E1133
-# pylint: disable=R1710
-# pylint: disable=W0719
-# pylint: disable=W3101
-# pylint: disable=C0103
-
 from typing import List
 
-from .rpc import rpc_method
-from .types import Location, SymbolNode
-from .vscode_services import selected_range, visible_range
 from .idea_services import IdeaIDEService
+from .rpc import rpc_method
+from .types import Location, LocationWithText, SymbolNode
+from .vscode_services import selected_range, visible_range
 
 
 class IDEService:
@@ -39,8 +31,9 @@ class IDEService:
     @rpc_method
     def install_python_env(self, command_name: str, requirements_file: str) -> str:
         """
-        A method to install a Python environment with the provided command name 
-        and requirements file, returning a string result.
+        A method to install a Python environment with the provided command name
+        and requirements file, returning python path installed.
+        Command name is the name of the environment to be installed.
         """
         return self._result
 
@@ -63,6 +56,7 @@ class IDEService:
     @rpc_method
     def ide_logging(self, level: str, message: str) -> bool:
         """
+        Logs a message to the IDE.
         level: "info" | "warn" | "error" | "debug"
         """
         return self._result
@@ -96,13 +90,17 @@ class IDEService:
         return [Location.parse_obj(loc) for loc in self._result]
 
     @rpc_method
+    def find_def_locations(self, abspath: str, line: int, character: int) -> List[Location]:
+        return [Location.parse_obj(loc) for loc in self._result]
+
+    @rpc_method
     def ide_name(self) -> str:
         """Returns the name of the IDE.
 
         This method is a remote procedure call (RPC) that fetches the name of the IDE being used.
 
         Returns:
-            The name of the IDE as a string.
+            The name of the IDE as a string. For example, "vscode" or "pycharm".
         """
         return self._result
 
@@ -125,19 +123,19 @@ class IDEService:
         """
         return self._result
 
-    def get_visible_range(self):
+    def get_visible_range(self) -> LocationWithText:
         """
         Determines and returns the visible range of code in the current IDE.
 
         Returns:
-            A tuple denoting the visible range if the IDE is VSCode, or defers to 
+            A tuple denoting the visible range if the IDE is VSCode, or defers to
             IdeaIDEService's get_visible_range method for other IDEs.
         """
         if self.ide_name() == "vscode":
             return visible_range()
         return IdeaIDEService().get_visible_range()
 
-    def get_selected_range(self):
+    def get_selected_range(self) -> LocationWithText:
         """
         Retrieves the selected range of code in the current IDE.
 
@@ -148,3 +146,33 @@ class IDEService:
         if self.ide_name() == "vscode":
             return selected_range()
         return IdeaIDEService().get_selected_range()
+
+    @rpc_method
+    def get_diagnostics_in_range(self, fileName: str, startLine: int, endLine: int) -> List[str]:
+        """
+        Retrieves diagnostics for a specific range of code in the current IDE.
+
+        Returns:
+            A list of diagnostic messages for the specified range.
+        """
+        return self._result
+
+    @rpc_method
+    def get_collapsed_code(self, fileName: str, startLine: int, endLine: int) -> str:
+        """
+        Retrives collapsed code exclude specfic range of code in the current IDE.
+
+        Returns:
+            The collapsed code.
+        """
+        return self._result
+
+    @rpc_method
+    def get_extension_tools_path(self) -> str:
+        """
+        Retrives extension tools path.
+
+        Returns:
+            The extension tools path.
+        """
+        return self._result
